@@ -1,10 +1,20 @@
 from rest_framework import serializers
-from orders.models import Order
+from orders.models import Order, Restaurant, Rider
+
+class RestaurantSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Restaurant
+        fields = ['id', 'name', 'address']
+
+class RiderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Rider
+        fields = ['id', 'name']
 
 class OrderV2Serializer(serializers.ModelSerializer):
     class Meta:
         model = Order
-        fields = ['id', 'restaurant_name', 'status', 'created_at', 'version']
+        fields = ['id', 'restaurant_name', 'status', 'created_at', 'version', 'restaurant', 'rider']
         read_only_fields = ['id', 'created_at', 'version']
 
 class OrderCancellationSerializer(serializers.Serializer):
