@@ -119,24 +119,30 @@ stateDiagram-v2
     [*] --> pending_payment: 주문 생성
     pending_payment --> payment_failed: 결제 실패
     pending_payment --> pending_acceptance: 결제 성공
+    pending_payment --> cancelled: 결제 전 취소
     pending_acceptance --> rejected: 주문 거절
+    pending_acceptance --> cancelled: 접수 전 취소
     pending_acceptance --> preparing: 주문 접수
     preparing --> ready_for_pickup: 조리 완료
     ready_for_pickup --> in_transit: 픽업 완료
     in_transit --> delivered: 배달 완료
     delivered --> [*]
+    cancelled --> [*]
+    rejected --> [*]
+    payment_failed --> [*]
 ```
 
-| 상태 | 설명 |
-|------|------|
-| `pending_payment` | 결제 대기중 |
-| `payment_failed` | 결제 실패 |
-| `pending_acceptance` | 주문 접수 대기중 |
-| `rejected` | 주문 거절됨 |
-| `preparing` | 조리중 |
-| `ready_for_pickup` | 픽업 대기중 |
-| `in_transit` | 배달중 |
-| `delivered` | 배달 완료 |
+| 상태 | 설명 | 전이 가능 행위 |
+|------|------|---------------|
+| `pending_payment` | 결제 대기중 | payment, cancellation |
+| `payment_failed` | 결제 실패 | (종료 상태) |
+| `pending_acceptance` | 주문 접수 대기중 | acceptance, rejection, cancellation |
+| `rejected` | 주문 거절됨 | (종료 상태) |
+| `cancelled` | 주문 취소됨 | (종료 상태) |
+| `preparing` | 조리중 | preparation-complete |
+| `ready_for_pickup` | 픽업 대기중 | pickup |
+| `in_transit` | 배달중 | delivery |
+| `delivered` | 배달 완료 | (종료 상태) |
 
 ---
 
@@ -200,7 +206,7 @@ Content-Type: application/json
 
 ---
 
-## ✅ V2 API 설계 과제
+##  V2 API 설계 과제
 
 ### 과제 1: 행위 기반 리소스 (Action-oriented Resource) 설계
 
@@ -438,27 +444,37 @@ query {
 
 #### Django 구현 예시
 
-**프로젝트 구조:**
+**프로젝트 구조 (실제 구현):**
 ```
-quickeats/
+quickeats/              # 프로젝트 설정
+├── settings.py
+├── urls.py             # 메인 라우터
+└── wsgi.py
+
+orders/                 # 주문 앱
+├── models.py           # Order 모델 (상태 정의)
+├── views.py            # V1 ViewSet
+├── urls.py             # V1/V2 라우팅
 ├── api/
-│   ├── v1/
-│   │   ├── urls.py
-│   │   └── views.py
 │   └── v2/
-│       ├── urls.py
-│       └── views.py
-├── urls.py
-└── settings.py
+│       ├── views.py    # V2 행위 기반 ViewSet
+│       ├── urls.py     # V2 라우터
+│       └── serializers.py
+└── migrations/
 ```
 
-**urls.py:**
+**urls.py (orders/urls.py):**
 ```python
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import OrderV1ViewSet
+
+router = DefaultRouter()
+router.register(r'orders', OrderV1ViewSet)
 
 urlpatterns = [
-    path('api/v1/', include('api.v1.urls')),
-    path('api/v2/', include('api.v2.urls')),
+    path('v1/', include(router.urls)),           # /api/v1/orders/
+    path('v2/', include('orders.api.v2.urls')),  # /api/v2/orders/
 ]
 ```
 
@@ -484,13 +500,94 @@ urlpatterns = [
 
 ---
 
-## 프로젝트 목표
+## 🚀 Quick Start
+
+```bash
+# 1. 가상환경 생성 및 활성화
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # macOS/Linux
+
+# 2. 패키지 설치
+pip install -r requirements.txt
+
+# 3. 데이터베이스 마이그레이션
+python manage.py migrate
+
+# 4. 관리자 계정 생성
+python manage.py createsuperuser
+
+# 5. 서버 실행
+python manage.py runserver
+
+# 6. Race Condition 테스트 (별도 터미널)
+python attack.py
+```
+
+### 🔗 주요 엔드포인트
+
+| 버전 | 엔드포인트 | 설명 |
+|------|-----------|------|
+| V1 | `GET /api/v1/orders/` | 주문 목록 조회 |
+| V1 | `PUT /api/v1/orders/{id}/` | 상태 변경 (문제 있음) |
+| V2 | `GET /api/v2/orders/` | 주문 목록 조회 |
+| V2 | `POST /api/v2/orders/{id}/payment/` | 결제 처리 |
+| V2 | `POST /api/v2/orders/{id}/cancellation/` | 주문 취소 |
+| V2 | `POST /api/v2/orders/{id}/acceptance/` | 주문 접수 |
+| - | `/admin/` | Django 관리자 페이지 |
+
+---
+
+## 📁 프로젝트 구조
+
+```
+B2_baedal/
+├── manage.py                 # Django 관리 명령어
+├── requirements.txt          # 의존성 패키지
+├── attack.py                 # 🔥 Race Condition 테스트 스크립트
+├── README.md                 # 프로젝트 문서
+│
+├── quickeats/                # 프로젝트 설정
+│   ├── settings.py           # Django 설정 (DB, 앱 등)
+│   ├── urls.py               # 메인 URL 라우터
+│   └── wsgi.py
+│
+└── orders/                   # 주문 앱 (핵심)
+    ├── models.py             # Order 모델 + 상태 정의
+    ├── views.py              # V1 ViewSet (문제 있는 버전)
+    ├── urls.py               # URL 라우팅 (v1, v2)
+    ├── serializers.py        # V1 Serializer
+    ├── admin.py              # 관리자 페이지 설정
+    ├── tests.py              # V1 테스트
+    ├── tests_v2.py           # V2 테스트
+    │
+    └── api/v2/               # V2 API (개선된 버전)
+        ├── views.py          # 행위 기반 ViewSet
+        ├── urls.py           # V2 라우터
+        └── serializers.py    # V2 Serializer
+```
+
+---
+
+## ✅ 구현 현황
 
 이 자료를 바탕으로 다음을 구현:
 
-- [ ] V2 REST API 설계 및 구현
-- [ ] 행위 기반 리소스 엔드포인트 구축
+- [x] V2 REST API 설계 및 구현
+- [x] 행위 기반 리소스 엔드포인트 구축 (7개 완료)
+- [x] API 버전 관리 체계 수립 (`/api/v1/`, `/api/v2/`)
 - [ ] Idempotency-Key 기반 멱등성 보장 미들웨어
 - [ ] ETag/If-Match 기반 낙관적 락 구현
-- [ ] 사이드로딩 기능 구현
-- [ ] API 버전 관리 체계 수립
+- [ ] 사이드로딩 기능 구현 (`?include=`)
+
+### 구현된 V2 엔드포인트
+
+| 엔드포인트 | 행위자 | 허용 상태 | 결과 상태 |
+|-----------|--------|----------|----------|
+| `POST /orders/{id}/payment/` | 고객 | pending_payment | pending_acceptance |
+| `POST /orders/{id}/cancellation/` | 고객 | pending_payment, pending_acceptance | cancelled |
+| `POST /orders/{id}/acceptance/` | 레스토랑 | pending_acceptance | preparing |
+| `POST /orders/{id}/rejection/` | 레스토랑 | pending_acceptance | rejected |
+| `POST /orders/{id}/preparation-complete/` | 레스토랑 | preparing | ready_for_pickup |
+| `POST /orders/{id}/pickup/` | 라이더 | ready_for_pickup | in_transit |
+| `POST /orders/{id}/delivery/` | 라이더 | in_transit | delivered |
