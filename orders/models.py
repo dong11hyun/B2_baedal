@@ -20,6 +20,7 @@ class Order(models.Model):
         default=Status.PENDING_PAYMENT
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    version = models.IntegerField(default=1) # 낙관적 락을 위한 버전 필드
 
     def __str__(self):
         return f"Order {self.id} ({self.status})"
