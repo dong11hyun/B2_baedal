@@ -2,7 +2,7 @@ import threading
 import requests
 import time
 
-URL = "http://127.0.0.1:8000/api/v1/orders/1/"
+URL = "http://127.0.0.1:8000/api/v1/orders/2/"
 
 def customer_cancel():
     print("[고객] '취소해주세요!' 요청 보냄")
@@ -32,7 +32,7 @@ t2.join()
 # 최종 결과 확인
 print("\n=== 🔍 최종 결과 확인 ===")
 final_res = requests.get(URL).json()
-print(f"DB에 저장 전 최종 상태: {final_res['status']}")
+print(f"DB에 저장 후 최종 상태: {final_res['status']}")
 
 # if final_res['status'] == 'preparing':
 #     print("😱 [결론] 망했습니다. 고객은 취소한 줄 아는데, 주방에선 치킨을 튀기고 있습니다. (사장님 승리)")
