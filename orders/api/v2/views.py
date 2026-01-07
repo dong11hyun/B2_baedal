@@ -15,6 +15,8 @@ from orders.api.v2.serializers import (
 import time
 import hashlib
 
+from orders.decorators import idempotent
+
 class OrderV2ViewSet(viewsets.ReadOnlyModelViewSet):
     """
     V2 API: Action-oriented Resources with Optimistic Locking
@@ -27,7 +29,69 @@ class OrderV2ViewSet(viewsets.ReadOnlyModelViewSet):
         raw_data = f"order-{order.id}-v{order.version}"
         return hashlib.md5(raw_data.encode()).hexdigest()
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # ?include=restaurant,rider 처리
+        include_params = request.query_params.get('include', '').split(',')
+        include_params = [param.strip() for param in include_params if param]
+        
+        # N+1 문제 해결을 위해 select_related 사용
+        if 'restaurant' in include_params and 'rider' in include_params:
+            queryset = queryset.select_related('restaurant', 'rider')
+        elif 'restaurant' in include_params:
+            queryset = queryset.select_related('restaurant')
+        elif 'rider' in include_params:
+            queryset = queryset.select_related('rider')
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        # 기본 응답 구조
+        response_data = {
+            "results": data
+        }
+
+        # Side-loading Data 추가
+        if include_params:
+            included = {}
+            if 'restaurant' in include_params:
+                # 중복 제거하여 Restaurant 목록 추출
+                restaurant_ids = set()
+                restaurants = []
+                for order in (page if page else queryset):
+                     if order.restaurant and order.restaurant.id not in restaurant_ids:
+                         restaurant_ids.add(order.restaurant.id)
+                         restaurants.append({
+                             "id": order.restaurant.id,
+                             "name": order.restaurant.name,
+                             "address": order.restaurant.address
+                         })
+                included['restaurants'] = restaurants
+
+            if 'rider' in include_params:
+                rider_ids = set()
+                riders = []
+                for order in (page if page else queryset):
+                     if order.rider and order.rider.id not in rider_ids:
+                         rider_ids.add(order.rider.id)
+                         riders.append({
+                             "id": order.rider.id,
+                             "name": order.rider.name
+                         })
+                included['riders'] = riders
+            
+            response_data['included'] = included
+            
+        return Response(response_data)
+
     def retrieve(self, request, *args, **kwargs):
+        # 상세 조회에서도 동일하게 지원 가능여부는 선택사항. 여기선 리스트 위주로 구현.
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         response = Response(serializer.data)
@@ -78,6 +142,7 @@ class OrderV2ViewSet(viewsets.ReadOnlyModelViewSet):
         
         return response
 
+    @idempotent
     @action(detail=True, methods=['post'], url_path='payment')
     def payment(self, request, pk=None):
         order = self.get_object()

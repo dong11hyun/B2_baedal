@@ -9,11 +9,17 @@ class OrderV2ActionTestCase(TestCase):
         self.client = APIClient()
         self.order = Order.objects.create(status=Order.Status.PENDING_PAYMENT)
         self.url_base = '/orders/api/v2/orders' 
-        
+    
+    def get_etag(self, order):
+        import hashlib
+        raw_data = f"order-{order.id}-v{order.version}"
+        return f'"{hashlib.md5(raw_data.encode()).hexdigest()}"'
+
     def test_payment_action(self):
         url = reverse('order-v2-payment', args=[self.order.id])
         data = {'payment_method': 'card', 'amount': 20000}
-        response = self.client.post(url, data)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, data, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.PENDING_ACCEPTANCE)
@@ -21,7 +27,8 @@ class OrderV2ActionTestCase(TestCase):
     def test_cancellation_success(self):
         url = reverse('order-v2-cancellation', args=[self.order.id])
         data = {'reason': 'Changed mind'}
-        response = self.client.post(url, data)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, data, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.CANCELLED)
@@ -33,7 +40,8 @@ class OrderV2ActionTestCase(TestCase):
         
         url = reverse('order-v2-rejection', args=[self.order.id])
         data = {'reason': 'Out of stock'}
-        response = self.client.post(url, data)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, data, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.REJECTED)
@@ -43,7 +51,8 @@ class OrderV2ActionTestCase(TestCase):
         self.order.save()
         
         url = reverse('order-v2-acceptance', args=[self.order.id])
-        response = self.client.post(url)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.PREPARING)
@@ -53,7 +62,8 @@ class OrderV2ActionTestCase(TestCase):
         self.order.save()
         
         url = reverse('order-v2-preparation-complete', args=[self.order.id])
-        response = self.client.post(url)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.READY_FOR_PICKUP)
@@ -64,7 +74,8 @@ class OrderV2ActionTestCase(TestCase):
         self.order.save()
         
         url = reverse('order-v2-pickup', args=[self.order.id])
-        response = self.client.post(url)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.IN_TRANSIT)
@@ -74,7 +85,8 @@ class OrderV2ActionTestCase(TestCase):
         self.order.save()
         
         url = reverse('order-v2-delivery', args=[self.order.id])
-        response = self.client.post(url)
+        headers = {'HTTP_IF_MATCH': self.get_etag(self.order)}
+        response = self.client.post(url, **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, Order.Status.DELIVERED)
