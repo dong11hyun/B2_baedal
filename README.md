@@ -502,6 +502,14 @@ urlpatterns = [
 
 ## 🚀 Quick Start
 
+http://127.0.0.1:8000/api/v1/orders/    주문 목록 조회 / 새 주문 생성
+http://127.0.0.1:8000/api/v1/orders/n/  n번 주문 상세 조회 / 수정
+
+http://127.0.0.1:8000/api/v2/orders/    주문 목록 조회 / 새 주문 생성
+http://127.0.0.1:8000/api/v2/orders/n/  n번 주문 상세 조회 / 수정
+                                        
+http://127.0.0.1:8000/admin/            관리자 페이지
+
 ```bash
 # 1. 가상환경 생성 및 활성화
 python -m venv venv
@@ -520,8 +528,19 @@ python manage.py createsuperuser
 # 5. 서버 실행
 python manage.py runserver
 
+---TEST CODE 실행---
+
 # 6. Race Condition 테스트 (별도 터미널)
-python attack.py
+python black_BOX_test_v1.0.py
+
+# 7. 멱등성 테스트
+python black_BOX_test.py
+
+# 8. V2 API 테스트
+python tests_v2.py
+
+# 9. N+1 쿼리 테스트
+python tests_nplus1.py
 ```
 
 ### 🔗 주요 엔드포인트
@@ -544,7 +563,7 @@ python attack.py
 B2_baedal/
 ├── manage.py                 # Django 관리 명령어
 ├── requirements.txt          # 의존성 패키지
-├── attack.py                 # 🔥 Race Condition 테스트 스크립트
+├── attack.py                 # 🔺 Race Condition 테스트 스크립트
 ├── README.md                 # 프로젝트 문서
 │
 ├── quickeats/                # 프로젝트 설정
@@ -652,7 +671,7 @@ https://api.quickeats.com/api/v2/orders
 
 ---
 
-## ✅ 구현 현황
+## 🔹 구현 현황
 
 이 자료를 바탕으로 다음을 구현:
 
