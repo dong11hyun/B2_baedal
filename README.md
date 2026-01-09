@@ -1,5 +1,7 @@
 # REST API 심층 탐구: 실시간 주문 처리 시스템의 상태 전이와 동시성 제어
 ---
+> 스터디를 진행하면서 직접 구현해보고 싶은 지문을 바탕으로 mvp모델을 구현해보았습니다.
+- 스터디 참고링크 : [https://github.com/dong11hyun/DevStudy__CodeReview/tree/main/(%EC%B5%9C%EC%A2%85)%EC%8A%A4%ED%84%B0%EB%94%94%EC%9E%90%EB%A3%8C](https://github.com/dong11hyun/DevStudy__CodeReview/blob/main/(%EC%B5%9C%EC%A2%85)%EC%8A%A4%ED%84%B0%EB%94%94%EC%9E%90%EB%A3%8C/(1%ED%9A%8C%EC%B0%A8)Infra_Backend.md)
 > 대규모 배달 플랫폼에서 발생할 수 있는 **동시성 문제**와 **데이터 정합성 이슈**를 
 분석하고, 이를 해결하는 **RESTful API 설계 패턴**을 연구/구현한 프로젝트입니다.
 
