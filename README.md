@@ -43,7 +43,7 @@
 - 클라이언트와 효율적으로 소통하는 **V2 API**를 설계해야 합니다.
 
 
-##### 문제 1. 모호한 상태 전이 API
+#### 문제 1. 모호한 상태 전이 API
 
 **현재 방식:**
 ```http
@@ -61,7 +61,7 @@ Content-Type: application/json
 
 ---
 
-##### 문제 2. 치명적인 동시성 문제 (Race Condition)
+#### 문제 2. 치명적인 동시성 문제 (Race Condition)
 
 **시나리오:**
 ```
@@ -76,7 +76,7 @@ Content-Type: application/json
 
 ---
 
-##### 문제 3. 멱등성(Idempotency) 부재
+#### 문제 3. 멱등성(Idempotency) 부재
 
 **문제 시나리오:**
 1. 고객이 결제 요청 전송
@@ -87,7 +87,7 @@ Content-Type: application/json
 
 ---
 
-##### 문제 4. 데이터 로딩 비효율 (N+1 문제)
+#### 문제 4. 데이터 로딩 비효율 (N+1 문제)
 
 **현재 상황:**
 - `GET /api/v1/orders`는 `restaurant_id`와 `rider_id`만 반환
