@@ -2,7 +2,7 @@ import threading
 import requests
 import time
 
-URL = "http://127.0.0.1:8000/api/v1/orders/1/"
+URL = "http://127.0.0.1:8000/api/orders/1/"
 
 def customer_cancel():
     print("[고객] '취소해주세요!' 요청 보냄")
